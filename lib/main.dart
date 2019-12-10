@@ -11,7 +11,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'ColorFilter Demo',
+      title: 'ColorFilter Matrix Demo',
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
@@ -44,7 +44,7 @@ class ColorFilterDemoState extends State<ColorFilterDemo> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('ColorFilter'),
+        title: Text('ColorFilter Matrix'),
       ),
       body: FutureBuilder(
         future: _loadImage(),
