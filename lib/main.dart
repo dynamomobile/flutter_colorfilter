@@ -1,111 +1,151 @@
+import 'dart:async';
+import 'dart:typed_data';
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 void main() => runApp(MyApp());
 
 class MyApp extends StatelessWidget {
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'ColorFilter Demo',
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // Try running your application with "flutter run". You'll see the
-        // application has a blue toolbar. Then, without quitting the app, try
-        // changing the primarySwatch below to Colors.green and then invoke
-        // "hot reload" (press "r" in the console where you ran "flutter run",
-        // or simply save your changes to "hot reload" in a Flutter IDE).
-        // Notice that the counter didn't reset back to zero; the application
-        // is not restarted.
         primarySwatch: Colors.blue,
       ),
-      home: MyHomePage(title: 'Flutter Demo Home Page'),
+      home: ColorFilterDemo(),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  MyHomePage({Key key, this.title}) : super(key: key);
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
-
+class ColorFilterDemo extends StatefulWidget {
   @override
-  _MyHomePageState createState() => _MyHomePageState();
+  ColorFilterDemoState createState() => ColorFilterDemoState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+class ColorFilterDemoState extends State<ColorFilterDemo> {
+  ImagePainter imagePainter;
+  List<bool> matrix;
 
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
+  @override
+  void initState() {
+    super.initState();
+    imagePainter = ImagePainter(this);
+    matrix = List.generate(5 * 4, (_) => false);
+    matrix[0 + 0 * 5] = true;
+    matrix[1 + 1 * 5] = true;
+    matrix[2 + 2 * 5] = true;
+    matrix[3 + 3 * 5] = true;
   }
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
     return Scaffold(
       appBar: AppBar(
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
+        title: Text('ColorFilter'),
       ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Invoke "debug painting" (press "p" in the console, choose the
-          // "Toggle Debug Paint" action from the Flutter Inspector in Android
-          // Studio, or the "Toggle Debug Paint" command in Visual Studio Code)
-          // to see the wireframe for each widget.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            Text(
-              'You have pushed the button this many times:',
+      body: FutureBuilder(
+        future: _loadImage(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.done) {
+            imagePainter.image = snapshot.data;
+          }
+          return Container(
+            color: Colors.black12,
+            child: Center(
+              child: Column(
+                children: [
+                  Padding(
+                    padding: EdgeInsets.all(20),
+                    child: _switchBoard(),
+                  ),
+                  Padding(
+                    padding: EdgeInsets.all(10),
+                    child: _canvas(),
+                  ),
+                ],
+              ),
             ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.display1,
+          );
+        },
+      ),
+    );
+  }
+
+  Future<ui.Image> _loadImage() async {
+    final ByteData data = await rootBundle.load('assets/rgb-bands.png');
+    final Completer<ui.Image> completer = new Completer();
+    ui.decodeImageFromList(Uint8List.view(data.buffer), (ui.Image img) {
+      return completer.complete(img);
+    });
+    return completer.future;
+  }
+
+  Widget _canvas() {
+    return LayoutBuilder(
+      builder: (context, size) {
+        return CustomPaint(
+          painter: imagePainter,
+          size: Size.square(size.maxWidth),
+        );
+      },
+    );
+  }
+
+  Widget _switchBoard() {
+    return Table(
+      children: List.generate(
+        4,
+        (row) => TableRow(
+          children: List.generate(
+            5,
+            (column) => Switch(
+              value: matrix[column + row * 5],
+              onChanged: (value) {
+                setState(() {
+                  matrix[column + row * 5] = value;
+                });
+              },
             ),
-          ],
+          ),
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
     );
+  }
+}
+
+class ImagePainter extends CustomPainter {
+  ImagePainter(this.state);
+
+  ColorFilterDemoState state;
+  ui.Image image;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint();
+    paint.color = Colors.white;
+    canvas.drawRect(Rect.fromLTRB(0, 0, size.width, size.height), paint);
+    if (image != null) {
+      paint.colorFilter = ColorFilter.matrix(List.generate(5 * 4, (index) {
+        if ((index + 1) % 5 == 0) {
+          return state.matrix[index] ? 255.0 : 0.0;
+        }
+        return state.matrix[index] ? 1.0 : 0.0;
+      }));
+      // Default matrix
+      // 1.0, 0.0, 0.0, 0.0, 0,
+      // 0.0, 1.0, 0.0, 0.0, 0,
+      // 0.0, 0.0, 1.0, 0.0, 0,
+      // 0.0, 0.0, 0.0, 1.0, 0,
+      canvas.scale(size.width / image.width, size.height / image.height);
+      canvas.drawImage(image, Offset.zero, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(CustomPainter oldDelegate) {
+    return false;
   }
 }
