@@ -5,6 +5,8 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'button.dart';
+
 void main() => runApp(MyApp());
 
 class MyApp extends StatelessWidget {
@@ -27,17 +29,17 @@ class ColorFilterDemo extends StatefulWidget {
 
 class ColorFilterDemoState extends State<ColorFilterDemo> {
   ImagePainter imagePainter;
-  List<bool> matrix;
+  List<int> matrix;
 
   @override
   void initState() {
     super.initState();
     imagePainter = ImagePainter(this);
-    matrix = List.generate(5 * 4, (_) => false);
-    matrix[0 + 0 * 5] = true;
-    matrix[1 + 1 * 5] = true;
-    matrix[2 + 2 * 5] = true;
-    matrix[3 + 3 * 5] = true;
+    matrix = List.generate(5 * 4, (_) => 0);
+    matrix[0 + 0 * 5] = 1;
+    matrix[1 + 1 * 5] = 2;
+    matrix[2 + 2 * 5] = 3;
+    matrix[3 + 3 * 5] = 4;
   }
 
   @override
@@ -58,12 +60,12 @@ class ColorFilterDemoState extends State<ColorFilterDemo> {
               child: Column(
                 children: [
                   Padding(
-                    padding: EdgeInsets.all(20),
-                    child: _switchBoard(),
+                    padding: EdgeInsets.all(10),
+                    child: _canvas(),
                   ),
                   Padding(
                     padding: EdgeInsets.all(10),
-                    child: _canvas(),
+                    child: _matrixBoard(),
                   ),
                 ],
               ),
@@ -94,20 +96,36 @@ class ColorFilterDemoState extends State<ColorFilterDemo> {
     );
   }
 
-  Widget _switchBoard() {
+  Widget _matrixBoard() {
     return Table(
       children: List.generate(
         4,
         (row) => TableRow(
           children: List.generate(
             5,
-            (column) => Switch(
-              value: matrix[column + row * 5],
-              onChanged: (value) {
-                setState(() {
-                  matrix[column + row * 5] = value;
-                });
-              },
+            (column) => Padding(
+              padding: const EdgeInsets.only(left: 4, right: 4),
+              child: StepButton(
+                steps: column==4 ? [
+                  Text('0'),
+                  Text('64'),
+                  Text('128'),
+                  Text('190'),
+                  Text('255'),
+                ] : [
+                  Text('0.0'),
+                  Text('0.25'),
+                  Text('0.5'),
+                  Text('0.75'),
+                  Text('1.0'),
+                ],
+                step: matrix[column + row * 5],
+                onChanged: (value) {
+                  setState(() {
+                    matrix[column + row * 5] = value;
+                  });
+                },
+              ),
             ),
           ),
         ),
@@ -130,9 +148,11 @@ class ImagePainter extends CustomPainter {
     if (image != null) {
       paint.colorFilter = ColorFilter.matrix(List.generate(5 * 4, (index) {
         if ((index + 1) % 5 == 0) {
-          return state.matrix[index] ? 255.0 : 0.0;
+          return [
+            0.0, 64.0, 128.0, 190.0, 255.0
+          ][state.matrix[index]];
         }
-        return state.matrix[index] ? 1.0 : 0.0;
+        return state.matrix[index]/4;
       }));
       // Default matrix
       // 1.0, 0.0, 0.0, 0.0, 0,
